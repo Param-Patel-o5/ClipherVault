@@ -1,0 +1,4 @@
+project_envri/
+__pycache__/
+*.pyc
+*.log
