@@ -4,3 +4,4 @@ __pycache__/
 *.log
 master.hash
 cooldown.txt
+passcode.json
