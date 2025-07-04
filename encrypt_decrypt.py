@@ -1,53 +1,124 @@
-import json                   # For reading/writing passcode data in JSON format
-import base64                 # For encoding the derived key
-import os                     # For checking if salt or vault file exists
-import getpass                # For secure input (hides input)
-from cryptography.fernet import Fernet     # For encryption and decryption
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC  # Key derivation
-from cryptography.hazmat.primitives import hashes     # Hashing algorithm
-from cryptography.hazmat.backends import default_backend  # Cryptography backend
+import json
+import base64
+import os
+from getpass import getpass
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
 
 # ---------- CONFIG ----------
-VAULT_FILE = "passcode.json"     # Main vault to store encrypted passwords
-SALT_FILE = "salt.salt"          # File to store randomly generated salt
+VAULT_FILE = "passcode.json"     # File to store all encrypted passwords
+SALT_FILE = "salt.salt"          # File to store the salt (important for key derivation)
 
 # ---------- Generate or Load Salt ----------
 def get_salt():
-    if not os.path.exists(SALT_FILE):      # If salt file doesn't exist
-        salt = os.urandom(16)              # Generate new random 16-byte salt
-        with open(SALT_FILE, "wb") as f:   # Save salt to file
+    """Returns the salt value used for key derivation. Creates one if not present."""
+    if not os.path.exists(SALT_FILE):
+        salt = os.urandom(16)
+        with open(SALT_FILE, "wb") as f:
             f.write(salt)
     else:
-        with open(SALT_FILE, "rb") as f:   # Load existing salt
+        with open(SALT_FILE, "rb") as f:
             salt = f.read()
-    return salt                            # Return salt value
+    return salt
 
-# ---------- Derive Fernet Key from Master Password ----------
+# ---------- Derive a Fernet Key from Master Password ----------
 def load_fernet(master_password):
-    salt = get_salt()                      # Load salt (or generate it)
-
-    # Set up the key derivation function with salt + master password
+    """
+    Derives a Fernet encryption key from the master password using PBKDF2HMAC and salt.
+    """
+    salt = get_salt()
     kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),         # Use SHA-256 as hash function
-        length=32,                         # Output length = 32 bytes
-        salt=salt,                         # Salt for extra randomness
-        iterations=100_000,                # Number of iterations = more secure
-        backend=default_backend()          # Use default backend
+        algorithm=hashes.SHA256(),    # Secure hashing algorithm
+        length=32,                    # Fernet requires 32-byte keys
+        salt=salt,
+        iterations=100_000,           # High iteration count for brute-force resistance
+        backend=default_backend()
     )
-
-    # Derive encryption key from password and encode to make Fernet-compatible
     key = base64.urlsafe_b64encode(kdf.derive(master_password.encode()))
-    return Fernet(key)                    # Return Fernet object
+    return Fernet(key)
 
-# ---------- Placeholder Functions ----------
+# ---------- Add Password ----------
 def add_password():
-    print("🔐 Add password function not yet implemented")
+    """Encrypts and saves a new password for a given site or service."""
+    fernet = load_fernet(getpass("Enter your master password again: "))
+    site_name = input("🌐 Enter the site/username: ")
+    encrypted_password = fernet.encrypt(
+        getpass("🔑 Enter the password you want to save: ").encode()
+    ).decode()
 
+    # Load existing data
+    if os.path.exists(VAULT_FILE) and os.path.getsize(VAULT_FILE) > 0:
+        with open(VAULT_FILE, "r") as f:
+            data = json.load(f)
+    else:
+        data = {}
+
+    # Add new password
+    data[site_name] = encrypted_password
+
+    # Save updated dictionary
+    with open(VAULT_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+    print("✅ Password saved successfully.")
+
+# ---------- Read Password ----------
 def read_password():
-    print("📖 Read password function not yet implemented")
+    """Decrypts and displays a password for a given site/username."""
+    fernet = load_fernet(getpass("Enter your master password again: "))
+    site_name = input("🌐 Enter the site/username you want the password for: ")
 
+    if os.path.exists(VAULT_FILE) and os.path.getsize(VAULT_FILE) > 0:
+        with open(VAULT_FILE, "r") as f:
+            data = json.load(f)
+
+        if site_name in data:
+            encrypted = data[site_name].encode()
+            decrypted = fernet.decrypt(encrypted).decode()
+            print(f"🔓 Password for '{site_name}': {decrypted}")
+        else:
+            print("⚠️ Site not found.")
+    else:
+        print("⚠️ No saved passwords yet.")
+
+# ---------- Update Password ----------
 def update_password():
-    print("✏️ Update password function not yet implemented")
+    """Updates an existing password, or optionally adds a new one."""
+    fernet = load_fernet(getpass("Enter your master password again: "))
+    site_name = input("🌐 Enter the site/username you want to update the password for: ")
+    encrypted_password = fernet.encrypt(
+        getpass("🔑 Enter the new password: ").encode()
+    ).decode()
 
+    # Load existing data
+    if os.path.exists(VAULT_FILE) and os.path.getsize(VAULT_FILE) > 0:
+        with open(VAULT_FILE, "r") as f:
+            data = json.load(f)
+    else:
+        data = {}
+
+    # Ask to add if site doesn't exist
+    is_new = False
+    if site_name not in data:
+        confirm = input(f"⚠️ '{site_name}' does not exist. Save as new? (y/n): ").lower()
+        if confirm != 'y':
+            print("❌ Cancelled. No changes made.")
+            return
+        is_new = True
+
+    # Save/update
+    data[site_name] = encrypted_password
+    with open(VAULT_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+    if is_new:
+        print("✅ New password added successfully.")
+    else:
+        print("✅ Password updated successfully.")
+
+# ---------- Delete Password (TODO) ----------
 def delete_password():
-    print("❌ Delete password function not yet implemented")
+    """Placeholder for deleting a password entry."""
+    print("❌ Delete password function not yet implemented.")
