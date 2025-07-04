@@ -5,3 +5,4 @@ __pycache__/
 master.hash
 cooldown.txt
 passcode.json
+salt.salt

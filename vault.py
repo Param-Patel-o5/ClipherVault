@@ -14,11 +14,6 @@ def create_hash_file(passcode, filename="master.hash"):
   with open(filename, "w") as f:
     f.write(passcode)
 
-# ----------- Create an empty password storage file -------------
-def create_passcode_file(filename="passcode.json"):
-  with open(filename, "w") as f:
-    f.write("{}")  # Initialize with empty dictionary
-
 # ----------- Create a cooldown file with current time -------------
 def create_cooldown_file(filename="cooldown.txt"):
   with open(filename, "w") as f:
@@ -47,12 +42,6 @@ if not os.path.exists("master.hash"):
    print("✅ Master password got saved")
 
 else:
-  # If password storage doesn't exist, create it
-  if not os.path.exists("passcode.json"):
-    create_passcode_file()
-    print("📂 Created empty passcode file\n")
-
-  else:
     # Check if cooldown file exists, and if cooldown is active
     if os.path.exists("cooldown.txt"):
       if not cooldown_time_checker():
@@ -72,6 +61,7 @@ else:
           "2. Read password\n"
           "3. Update password\n"
           "4. Delete password\n"
+          "5. EXIT MENU"
           "> "
             )
                
@@ -84,6 +74,8 @@ else:
                encrypt_decrypt.update_password()
             case "4":
                encrypt_decrypt.delete_password()
+            case "5":
+               exit()
             case _:
              print("❌ Invalid option. Please choose from 1 to 4.")
 
