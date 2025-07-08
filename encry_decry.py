@@ -1,7 +1,7 @@
 import json
 import base64
 import os
-import vault
+import hashlib
 from getpass import getpass
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -137,6 +137,17 @@ def update_password():
     else:
         print("✅ Password updated successfully.")
 
+def hash_passcode(password):
+    """
+    Hashes the master password using BLAKE2b hashing algorithm.
+
+    Args:
+        password (str): Plaintext master password.
+
+    Returns:
+        str: Hexadecimal hash of the password.
+    """
+    return hashlib.blake2b(password.encode()).hexdigest()
 
 # ---------- Delete Password ----------
 def delete_password():
@@ -147,7 +158,7 @@ def delete_password():
     with open("master.hash", "r") as f:
         stored_hash = f.read()
 
-    if vault.hash_passcode(master_input) != stored_hash:
+    if hash_passcode(master_input) != stored_hash:
         print("❌ Incorrect master password. Access denied.")
         return
 

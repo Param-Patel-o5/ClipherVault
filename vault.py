@@ -4,7 +4,7 @@ from getpass import getpass      # For secure password input (no echo)
 from time import sleep           # For adding delay between wrong attempts
 from datetime import datetime    # For timestamp management
 import os                        # For file existence and removal
-import encrypt_decrypt           # Module containing encryption/decryption functions
+import encry_decry          # Module containing encryption/decryption functions
 
 
 # ----------- Hashing Function -------------
@@ -97,13 +97,13 @@ else:
 
             match action_to_do:
                 case "1":
-                    encrypt_decrypt.add_password()
+                    encry_decry.add_password()
                 case "2":
-                    encrypt_decrypt.read_password()
+                    encry_decry.read_password()
                 case "3":
-                    encrypt_decrypt.update_password()
+                    encry_decry.update_password()
                 case "4":
-                    encrypt_decrypt.delete_password()
+                    encry_decry.delete_password()
                 case "5":
                     exit()
                 case _:
