@@ -4,11 +4,15 @@ from getpass import getpass      # For secure password input (no echo)
 from time import sleep           # For adding delay between wrong attempts
 from datetime import datetime    # For timestamp management
 import os                        # For file existence and removal
-import encry_decry          # Module containing encryption/decryption functions
-
+import encry_decry         # Module containing encryption/decryption functions
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+import base64
 
 # ----------- Hashing Function -------------
-def hash_passcode(password):
+def master_password_to_key(password):
     """
     Hashes the master password using BLAKE2b hashing algorithm.
 
@@ -18,7 +22,19 @@ def hash_passcode(password):
     Returns:
         str: Hexadecimal hash of the password.
     """
-    return hashlib.blake2b(password.encode()).hexdigest()
+    salt = encry_decry.get_salt()
+
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=100_000,
+        backend=default_backend()
+    )
+    
+    key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
+
+    return key
 
 
 # ----------- Save Hash to File -------------
@@ -31,10 +47,11 @@ def create_hash_file(passcode, filename="master.hash"):
         filename (str): File to store the hash.
     """
     with open(filename, "w") as f:
-        f.write(passcode)
+        f.write( hashlib.blake2b(passcode).hexdigest())
 
 
-# ----------- Create Cooldown Timestamp -------------
+# ----------- Create Cooldown Timestamp -------------'
+
 def create_cooldown_file(filename="cooldown.txt"):
     """
     Creates a cooldown file storing the current timestamp.
@@ -70,22 +87,26 @@ def cooldown_time_checker():
 
 if not os.path.exists("master.hash"):
     # If no master password exists, ask user to create one
-    master_code = hash_passcode(getpass("🔐 Set a master passcode: "))
+    master_code = master_password_to_key(getpass("🔐 Set a master passcode: "))
     create_hash_file(master_code)
     print("✅ Master password saved securely.")
 
 else:
-    # If cooldown file exists, check if cooldown is active
     if os.path.exists("cooldown.txt"):
         if not cooldown_time_checker():
             exit()
 
-    # Allow 3 attempts to enter correct password
     for i in range(2, -1, -1):
-        user_input = getpass("🔐 Enter master passcode to access the vault: ")
+        entered_key = master_password_to_key(getpass("🔐 Enter master passcode to access the vault: "))
+        entered_key_hash = hashlib.blake2b(entered_key).hexdigest()
 
-        if open("master.hash", "r").read() == hash_passcode(user_input):
+        with open("master.hash", "r") as f:
+            stored_hash = f.read().strip()
+
+        if entered_key_hash == stored_hash:
             print("✅ Access granted.")
+            fernet = Fernet(entered_key)  # This is your final Fernet key
+
             action_to_do = input(
                 "\nChoose an action to perform:\n"
                 "1. Add password\n"
@@ -97,19 +118,19 @@ else:
 
             match action_to_do:
                 case "1":
-                    encry_decry.add_password()
+                    encry_decry.add_password(fernet)
                 case "2":
-                    encry_decry.read_password()
+                    encry_decry.read_password(fernet)
                 case "3":
-                    encry_decry.update_password()
+                    encry_decry.update_password(fernet)
                 case "4":
-                    encry_decry.delete_password()
+                    encry_decry.delete_password(fernet)
                 case "5":
                     exit()
                 case _:
                     print("❌ Invalid option. Please choose a number between 1 to 5.")
             break
-
+        
         else:
             if i == 0:
                 print("❌ All attempts failed. Access denied.")
@@ -117,4 +138,4 @@ else:
                 print("⏳ Try again after 3 minutes.")
             else:
                 print(f"❌ Incorrect password. {i} attempt(s) left.")
-                sleep(2)  # Delay before next attempt
+                sleep(2)

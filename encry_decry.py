@@ -1,23 +1,21 @@
 import json
-import base64
 import os
-import hashlib
 from getpass import getpass
 from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.backends import default_backend
 
 # ---------- CONFIG ----------
 VAULT_FILE = "passcode.json"     # File to store all encrypted passwords
-SALT_FILE = "salt.salt"          # File to store the salt (important for key derivation)
+SALT_FILE = "salt.salt"          # File to store the salt (for key derivation)
 
 
 # ---------- Generate or Load Salt ----------
-def get_salt():
+def get_salt() -> bytes:
     """
     Returns the salt value used for key derivation.
     If the salt file does not exist, creates a new salt and saves it.
+
+    Returns:
+        bytes: The salt value.
     """
     if not os.path.exists(SALT_FILE):
         salt = os.urandom(16)
@@ -30,10 +28,13 @@ def get_salt():
 
 
 # ---------- Load Vault Data ----------
-def load_vault_data():
+def load_vault_data() -> dict:
     """
     Loads and returns the content of the vault file (passcode.json).
     Returns an empty dictionary if the file does not exist or is empty.
+
+    Returns:
+        dict: Dictionary of stored site-password entries.
     """
     if os.path.exists(VAULT_FILE) and os.path.getsize(VAULT_FILE) > 0:
         with open(VAULT_FILE, "r") as f:
@@ -41,39 +42,18 @@ def load_vault_data():
     return {}
 
 
-# ---------- Derive Fernet Key ----------
-def load_fernet(master_password):
-    """
-    Derives a Fernet encryption key from the master password using PBKDF2HMAC and salt.
-
-    Args:
-        master_password (str): The user's master password.
-
-    Returns:
-        Fernet: A Fernet object initialized with the derived key.
-    """
-    salt = get_salt()
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=100_000,
-        backend=default_backend()
-    )
-    key = base64.urlsafe_b64encode(kdf.derive(master_password.encode()))
-    return Fernet(key)
-
-
 # ---------- Add Password ----------
-def add_password():
+def add_password(fernet: Fernet) -> None:
     """
     Prompts the user for a site and password, encrypts it, and saves it to the vault.
+
+    Args:
+        fernet (Fernet): The Fernet object for encryption.
     """
-    fernet = load_fernet(getpass("Enter your master password again: "))
     site_name = input("🌐 Enter the site/username: ")
-    encrypted_password = fernet.encrypt(
-        getpass("🔑 Enter the password you want to save: ").encode()
-    ).decode()
+    password = getpass("🔑 Enter the password you want to save: ")
+
+    encrypted_password = fernet.encrypt(password.encode()).decode()
 
     data = load_vault_data()
     data[site_name] = encrypted_password
@@ -85,11 +65,13 @@ def add_password():
 
 
 # ---------- Read Password ----------
-def read_password():
+def read_password(fernet: Fernet) -> None:
     """
     Prompts the user for a site name, decrypts the stored password, and displays it.
+
+    Args:
+        fernet (Fernet): The Fernet object for decryption.
     """
-    fernet = load_fernet(getpass("Enter your master password again: "))
     site_name = input("🌐 Enter the site/username you want the password for: ")
 
     data = load_vault_data()
@@ -107,15 +89,16 @@ def read_password():
 
 
 # ---------- Update Password ----------
-def update_password():
+def update_password(fernet: Fernet) -> None:
     """
     Updates an existing password or adds a new one after confirmation from the user.
+
+    Args:
+        fernet (Fernet): The Fernet object for encryption.
     """
-    fernet = load_fernet(getpass("Enter your master password again: "))
     site_name = input("🌐 Enter the site/username you want to update the password for: ")
-    encrypted_password = fernet.encrypt(
-        getpass("🔑 Enter the new password: ").encode()
-    ).decode()
+    new_password = getpass("🔑 Enter the new password: ")
+    encrypted_password = fernet.encrypt(new_password.encode()).decode()
 
     data = load_vault_data()
 
@@ -137,31 +120,15 @@ def update_password():
     else:
         print("✅ Password updated successfully.")
 
-def hash_passcode(password):
-    """
-    Hashes the master password using BLAKE2b hashing algorithm.
-
-    Args:
-        password (str): Plaintext master password.
-
-    Returns:
-        str: Hexadecimal hash of the password.
-    """
-    return hashlib.blake2b(password.encode()).hexdigest()
 
 # ---------- Delete Password ----------
-def delete_password():
+def delete_password(fernet: Fernet) -> None:
     """
-    Deletes a stored password entry after verifying the master password.
+    Deletes a stored password entry.
+
+    Args:
+        fernet (Fernet): Not used here, included for consistency with other functions.
     """
-    master_input = getpass("Enter your master password again: ")
-    with open("master.hash", "r") as f:
-        stored_hash = f.read()
-
-    if hash_passcode(master_input) != stored_hash:
-        print("❌ Incorrect master password. Access denied.")
-        return
-
     site_name = input("🌐 Enter the site/username you want to delete from the list: ")
     data = load_vault_data()
 
