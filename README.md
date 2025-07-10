@@ -10,7 +10,7 @@ It encrypts your data locally using your **master password**, and supports basic
 - ✅ **Master password protection** (with BLAKE2b hashing)
 - ✅ **Encrypted vault** using `Fernet` + derived key from `PBKDF2HMAC`
 - ✅ **Add, read, update, and delete credentials**
-- ✅ **Brute-force protection** — 3 failed attempts lock the app for 3 minutes
+- ✅ **Brute-force protection** — 3 failed attempts lock the app for  time set by user .
 - ✅ **Auto vault creation** if files don’t exist
 - ✅ **Separate encryption and interface logic** (modular structure)
 - ✅ Clean console interface using `getpass()` (for secure input)
