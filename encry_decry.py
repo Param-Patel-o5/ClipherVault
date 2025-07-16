@@ -1,5 +1,6 @@
 import json
 import os
+import pwinput
 from getpass import getpass
 from cryptography.fernet import Fernet
 
@@ -51,7 +52,7 @@ def add_password(fernet: Fernet) -> None:
         fernet (Fernet): The Fernet object for encryption.
     """
     site_name = input("🌐 Enter the site/username: ")
-    password = getpass("🔑 Enter the password you want to save: ")
+    password =  pwinput.pwinput(prompt= '🔑 Enter the password you want to save : ' , mask='*')
 
     encrypted_password = fernet.encrypt(password.encode()).decode()
 
@@ -72,7 +73,7 @@ def read_password(fernet: Fernet) -> None:
     Args:
         fernet (Fernet): The Fernet object for decryption.
     """
-    site_name = input("🌐 Enter the site/username you want the password for: ")
+    site_name = input("🌐 Enter the site/username you want the password for : ")
 
     data = load_vault_data()
 
@@ -96,8 +97,9 @@ def update_password(fernet: Fernet) -> None:
     Args:
         fernet (Fernet): The Fernet object for encryption.
     """
-    site_name = input("🌐 Enter the site/username you want to update the password for: ")
-    new_password = getpass("🔑 Enter the new password: ")
+    site_name = input("🌐 Enter the site/username you want to update the password for : ")
+    new_password = pwinput.pwinput(prompt= '🔑 Enter the new password: ', mask='*')
+
     encrypted_password = fernet.encrypt(new_password.encode()).decode()
 
     data = load_vault_data()
@@ -122,7 +124,7 @@ def update_password(fernet: Fernet) -> None:
 
 
 # ---------- Delete Password ----------
-def delete_password(fernet: Fernet) -> None:
+def delete_password() -> None:
     """
     Deletes a stored password entry.
 

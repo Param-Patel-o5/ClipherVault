@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
 import base64
-
+import pwinput
 # ----------- Hashing Function -------------
 def master_password_to_key(password):
     """
@@ -87,7 +87,8 @@ def cooldown_time_checker():
 
 if not os.path.exists("master.hash"):
     # If no master password exists, ask user to create one
-    master_code = master_password_to_key(getpass("🔐 Set a master passcode: "))
+    master_code = master_password_to_key (pwinput.pwinput(prompt= '🔐 Set a master passcode : ' , mask='*'))
+
     create_hash_file(master_code)
     print("✅ Master password saved securely.")
 
@@ -97,7 +98,7 @@ else:
             exit()
 
     for i in range(2, -1, -1):
-        entered_key = master_password_to_key(getpass("🔐 Enter master passcode to access the vault: "))
+        entered_key = master_password_to_key(pwinput.pwinput(prompt= '🔐 Enter your master passcode :  ' , mask='*'))
         entered_key_hash = hashlib.blake2b(entered_key).hexdigest()
 
         with open("master.hash", "r") as f:
