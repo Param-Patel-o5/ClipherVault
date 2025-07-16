@@ -13,7 +13,7 @@ It encrypts your data locally using your **master password**, and supports basic
 - ✅ **Brute-force protection** — 3 failed attempts lock the app for 3 minutes
 - ✅ **Auto vault creation** if files don’t exist
 - ✅ **Separate encryption and interface logic** (modular structure)
-- ✅ Clean console interface using `getpass()` (for secure input)
+- ✅ Clean console interface using `pwinput()` (for secure input)
 
 ---
 
